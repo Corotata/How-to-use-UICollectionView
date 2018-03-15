@@ -10,7 +10,7 @@ import UIKit
 
 class ViewController: UIViewController {
     
-    let dataSource = DataSource()
+    let viewModel = ViewModel()
     @IBOutlet weak var collectionView: UICollectionView!
     @IBOutlet weak var addBarButtonItem: UIBarButtonItem!
     @IBOutlet weak var deleteBarButtonItem: UIBarButtonItem!
@@ -21,6 +21,7 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         setupCollectionView()
         setupNavigationBar()
+//        collectionView.collectionViewLayout
     }
     
     func setupNavigationBar(){
@@ -36,22 +37,14 @@ class ViewController: UIViewController {
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        //        case1,直接在Storyboard的Cell连线Show segue
-        //        if segue.identifier == "DetailSegue" {
-        //            if let dest = segue.destination as? DetailViewController,let index = collectionView.indexPathsForSelectedItems?.first{
-        //                dest.selection = collectionData[index.row]
-        //            }
-        //        }
-        
-        //        case2,在ViewController的manual连线Show segue,并且在Select方法中调用self.performSegue(withIdentifier: "DetailSegue", sender: indexPath)
         if segue.identifier == "DetailSegue"{
             if let dest = segue.destination as? DetailViewController,
                 let index = sender as? IndexPath {
-                dest.park = dataSource.parkOfIndexPath(indexPath: index)
+                dest.park = viewModel.parkOfIndexPath(indexPath: index)
             }
         }
-        
     }
+    
     override func setEditing(_ editing: Bool, animated: Bool) {
         super.setEditing(editing, animated: animated)
         deleteBarButtonItem.isEnabled = editing
@@ -81,31 +74,40 @@ class ViewController: UIViewController {
 //MARK: Method
 extension ViewController{
     @IBAction func addItem(_ sender: UIBarButtonItem) {
-        //        let text = "\(collectionData.count + 1)🏆"
-        //        collectionData.append(text)
-        //        let index = IndexPath(row: collectionData.count - 1, section: 0)
-        //        collectionView.insertItems(at: [index])
-        //
-        //                //如果想要批量，可以使用如下方式
-        //                collectionView.performBatchUpdates({
-        //                    //填写上面的代码
-        //                }, completion: nil)
-        collectionView.insertItems(at: [dataSource.newRandomPark()])
+        let indexPath = viewModel.newRandomPark()
+        let layout = collectionView.collectionViewLayout as! CustomFlowLayout
+        layout.addedItem = indexPath
+        UIView.animate(withDuration: 1.0, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.0, options: [], animations: {
+            self.collectionView.insertItems(at: [indexPath])
+        }) { (finished) in
+            layout.addedItem = nil
+        }
+        
+        let animation = CABasicAnimation(keyPath: "transform.rotation.y")
+        animation.fromValue = NSNumber(floatLiteral: -.pi)
+        animation.byValue = NSNumber(floatLiteral: .pi)
+        animation.duration = 1
+        
+        let cell = collectionView.cellForItem(at: indexPath)
+        cell?.alpha = 0
+        UIView.animate(withDuration: 1, animations: {
+            cell?.layer.add(animation, forKey: "rotationAnimation")
+            cell?.alpha = 1
+        }) { (finished) in
+           
+            
+        }
+        
+       
         
     }
     
-    
     @IBAction func deleteItems(_ sender: UIBarButtonItem) {
-        //        if let selected = collectionView.indexPathsForSelectedItems{
-        //            let items = selected.map({$0.item}).sorted().reversed()
-        //            for item in items {
-        //                collectionData.remove(at: item)
-        //            }
-        //            collectionView.deleteItems(at: selected)
-        //            navigationController?.isToolbarHidden = true
-        //        }
         if let selected = collectionView.indexPathsForSelectedItems {
-            dataSource.deleteItemAtIndexPaths(selected)
+            let layout = collectionView?.collectionViewLayout as! CustomFlowLayout
+            layout.deletedItems = selected
+            
+            viewModel.deleteItemAtIndexPaths(selected)
             collectionView.deleteItems(at: selected)
             navigationController?.isToolbarHidden = true
         }
@@ -113,25 +115,34 @@ extension ViewController{
     
 }
 
-//MARK: UICollectionViewDataSource,UICollectionViewDelegate
+//MARK: UICollectionViewViewModel,UICollectionViewDelegate
 extension ViewController: UICollectionViewDataSource,UICollectionViewDelegate {
     func numberOfSections(in collectionView: UICollectionView) -> Int {
-        return dataSource.count
+        return viewModel.count
     }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return dataSource.numberOfSections(section: section)
+        return viewModel.numberOfSections(section: section)
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionViewCell", for: indexPath) as! CustomCollectionViewCell
         cell.isEditting = isEditing
-        let park = dataSource.parkOfIndexPath(indexPath: indexPath)
+        let park = viewModel.parkOfIndexPath(indexPath: indexPath)
         cell.park = park
         
         
         return cell
     }
+    
+//    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+//        cell.layer.removeAllAnimations()
+//        let animation = CABasicAnimation(keyPath: "transform.rotation.y")
+//        animation.fromValue = NSNumber(floatLiteral: -.pi)
+//        animation.byValue = NSNumber(floatLiteral: .pi)
+//        animation.duration = 1
+//        cell.layer.add(animation, forKey: "rotationAnimation")
+//    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         if !isEditing {
@@ -143,7 +154,7 @@ extension ViewController: UICollectionViewDataSource,UICollectionViewDelegate {
     
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
         let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "CustomCollectionReusableView", for: indexPath) as! CustomCollectionReusableView
-        header.section = dataSource.sectionOfIndexPath(indexPath: indexPath)
+        header.section = viewModel.sectionOfIndexPath(indexPath: indexPath)
         return header
     }
     func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
@@ -151,7 +162,7 @@ extension ViewController: UICollectionViewDataSource,UICollectionViewDelegate {
     }
     
     func collectionView(_ collectionView: UICollectionView, moveItemAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
-        dataSource.moveParkAtIndexPath(sourceIndexPath, toIndexPath: destinationIndexPath)
+        viewModel.moveParkAtIndexPath(sourceIndexPath, toIndexPath: destinationIndexPath)
     }
     
     func collectionView(_ collectionView: UICollectionView, canMoveItemAt indexPath: IndexPath) -> Bool {
@@ -165,7 +176,6 @@ extension ViewController {
         let point = longPress.location(in: collectionView)
         switch longPress.state {
         case .began:
-            
             guard let indexPath = collectionView.indexPathForItem(at: point) else{
                 return
             }

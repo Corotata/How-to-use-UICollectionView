@@ -9,15 +9,7 @@
 
 import UIKit
 
-class Section {
-    let title: String
-    var cells: [Park] = [Park]()
-    init(title: String) {
-        self.title = title
-    }
-}
-
-class DataSource {
+class ViewModel {
     private var parks = [Park]()
     private var sections = [Section]()
     private var immutableParks = [Park]()

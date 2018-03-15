@@ -8,6 +8,11 @@
 
 import UIKit
 
-class Section: NSObject {
-
+class Section {
+    let title: String
+    var cells: [Park] = [Park]()
+    init(title: String) {
+        self.title = title
+    }
 }
+
